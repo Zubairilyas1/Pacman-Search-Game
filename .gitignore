@@ -1,0 +1,46 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ============================================================
+# Evidence CSVs - run-output data, regenerated each run.
+# ALL evidence CSVs are ignored (they stay on your local disk).
+# ============================================================
+search/evidence/*.csv
+evidence/*.csv
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Test/coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+
+# Zip archives (large binary bundles)
+*.zip
+
+# OS generated files
+ehthumbs.db
+Icon?
+
+# Assignment PDF (binary, not source code - stays on your local machine)
+*.pdf
+
+# Personal planning/report docs (not part of assignment source)
+plan.md
+report.md
