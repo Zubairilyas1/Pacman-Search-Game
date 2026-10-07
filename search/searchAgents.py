@@ -150,10 +150,16 @@ class PositionSearchProblem(search.SearchProblem):
         self.walls = gameState.getWalls()
         self.startState = gameState.getPacmanPosition()
         if start != None: self.startState = start
-        self.goal = goal
+        
+        # Automatically detect single food goal if present in the layout
+        if gameState.getNumFood() == 1:
+            self.goal = gameState.getFood().asList()[0]
+        else:
+            self.goal = goal
+
         self.costFn = costFn
         self.visualize = visualize
-        if warn and (gameState.getNumFood() != 1 or not gameState.hasFood(*goal)):
+        if warn and (gameState.getNumFood() != 1 or not gameState.hasFood(*self.goal)):
             print('Warning: this does not look like a regular search maze')
 
         # For display purposes
@@ -304,10 +310,11 @@ class CornersProblem(search.SearchProblem):
         position, visited = state
         x, y = position
         
+        # Uniform expansion order: North -> South -> East -> West
         for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
             dx, dy = Actions.directionToVector(action)
             nextx, nexty = int(x + dx), int(y + dy)
-            
+
             if not self.walls[nextx][nexty]:
                 nextPosition = (nextx, nexty)
                 nextVisited = list(visited)
@@ -483,14 +490,15 @@ def foodHeuristic(state: Tuple[Tuple, List[List]], problem: FoodSearchProblem):
     if not foodList:
         return 0
     
-    # Use cached heuristic if available
+    # Use cached heuristic if available (cache key includes position)
     foodTuple = tuple(sorted(foodList))
+    cache_key = (position, foodTuple)
     if 'heuristic_cache' not in problem.heuristicInfo:
         problem.heuristicInfo['heuristic_cache'] = {}
         problem.heuristicInfo['dist_cache'] = {}
     
-    if foodTuple in problem.heuristicInfo['heuristic_cache']:
-        return problem.heuristicInfo['heuristic_cache'][foodTuple]
+    if cache_key in problem.heuristicInfo['heuristic_cache']:
+        return problem.heuristicInfo['heuristic_cache'][cache_key]
     
     # Precompute all-pairs maze distances between food dots (one-time cost)
     if 'maze_distances' not in problem.heuristicInfo:
@@ -509,11 +517,18 @@ def foodHeuristic(state: Tuple[Tuple, List[List]], problem: FoodSearchProblem):
     food_list_for_mst = problem.heuristicInfo['food_list_for_mst']
     
     # Minimum maze distance from current position to any remaining food
+    # Compute and cache position-to-food maze distances
+    if 'pos_to_food_dists' not in problem.heuristicInfo:
+        problem.heuristicInfo['pos_to_food_dists'] = {}
+    
     min_dist = float('inf')
     for f in foodList:
-        # Use Manhattan as lower bound for current position to food
-        # (we can't precompute this since position changes)
-        d = manhattanDistance(position, f)
+        pos_food_key = (position, f)
+        if pos_food_key not in problem.heuristicInfo['pos_to_food_dists']:
+            prob = PositionSearchProblem(problem.startingGameState, start=position, goal=f, warn=False, visualize=False)
+            from search import bfs
+            problem.heuristicInfo['pos_to_food_dists'][pos_food_key] = len(bfs(prob))
+        d = problem.heuristicInfo['pos_to_food_dists'][pos_food_key]
         if d < min_dist:
             min_dist = d
     
@@ -548,7 +563,7 @@ def foodHeuristic(state: Tuple[Tuple, List[List]], problem: FoodSearchProblem):
         
         result = min_dist + mst_cost
     
-    problem.heuristicInfo['heuristic_cache'][foodTuple] = result
+    problem.heuristicInfo['heuristic_cache'][cache_key] = result
     return result
 
 class ClosestDotSearchAgent(SearchAgent):
